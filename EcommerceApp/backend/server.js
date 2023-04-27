@@ -49,13 +49,14 @@ app.use('/api/order',require('./routes/orderRoutes'))
 app.use('/api/warehouse',require('./routes/warehouseRoutes'))
 
 
+
 function updateOrders() {
   now=new Date()
   OrderVerdictUnclear.findAll({
     where: {
       status_id: 'TBD',
       date: {
-        [Sequelize.Op.lt]: new Date(now.getTime())
+        [Sequelize.Op.lt]: new Date(now.getTime()+(7 * 24 * 60 * 60 * 1000))
       }
     }
   }).then((orders) => {
@@ -69,13 +70,15 @@ function updateOrders() {
 
 setInterval(updateOrders, 5000);
 
+
+
 function updateReturnOrders() {
   now=new Date()
   OrderVerdictUnclear.findAll({
     where: {
       status_id: 'RTBD',
       date: {
-        [Sequelize.Op.lt]: new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000))
+        [Sequelize.Op.lt]: new Date(now.getTime())
       }
     }
   }).then((orders) => {

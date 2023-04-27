@@ -1,11 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { BankInfo, Account } = require('./models.js');
-
+const cors = require('cors');
 const app = express();
 console.log(BankInfo)
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(cors())
 
 // Create a bank
 app.post('/banks', async (req, res) => {
@@ -129,6 +130,28 @@ app.get('/banks', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+app.post('/getDetails', (req, res) => {
+  const { account_id } = req.body;
+  console.log("Account id  ",account_id)
+  Account.findOne({
+    attributes: ['username', 'password'],
+    where: { account_number: account_id }
+  })
+  .then(account => {
+    if (!account) {
+      res.status(404).json({ message: 'Account not found' });
+    } else {
+      const { username, password } = account;
+      res.status(200).json({ username, password });
+    }
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(500).json({ message: 'Server error' });
+  });
+});
+
 
 // Start the server
 app.listen(5050, () => {

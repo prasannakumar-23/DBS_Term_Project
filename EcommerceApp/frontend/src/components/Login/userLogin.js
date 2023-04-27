@@ -48,7 +48,7 @@ function UserLogin() {
       
       setTimeout(() => {
         // code to be executed after 2 seconds
-        window.location.href = "/";
+        window.location.href = "/productdisplay";
       }, 1000); // wait for 2 seconds (2000 milliseconds)
 
       return NotificationManager.success('You have successfully logged in!', 'Success');

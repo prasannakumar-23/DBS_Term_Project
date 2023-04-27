@@ -1,9 +1,11 @@
 const Sequelize = require('sequelize');
 const mysql = require('mysql2');
+
 const sequelize = new Sequelize('ecommerce', 'root', 'Prasanna@1234', {
   host: 'localhost',
   dialect: 'mysql'
 });
+
 
 sequelize.authenticate()
   .then(() => console.log('MySQL connected'))
@@ -25,6 +27,7 @@ const Warehouse = sequelize.define('Warehouse', {
   }
 });
 
+
 sequelize.sync()
   .then(() => {
     console.log('Order tables have been created');
@@ -32,4 +35,8 @@ sequelize.sync()
   .catch((err) => {
     console.error('Unable to create order tables:', err);
   });
+
+
+
+
 module.exports = Warehouse;

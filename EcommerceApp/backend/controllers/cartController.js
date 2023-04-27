@@ -1,4 +1,6 @@
 const  Cart  = require('../models/cart');
+const { ProductCategory, Product, ProductItem, Variation, VariationOption, ProductConfig } = require('../models/product');
+
 
 const addToCart = async (req, res) => {
   const { email, product_item_id, quantity, price } = req.body;
@@ -103,8 +105,36 @@ const emptyCart = async (req, res) => {
   }
 };
 
+const displayCart= async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const cartItems = await Cart.findAll({
+      where: { email },
+      include: [{ model: ProductItem }]
+    });
+
+    const productItems = cartItems.map((item) => item.ProductItem);
+
+    const products = await Promise.all(productItems.map(async (item) => {
+      const product = await Product.findOne({ where: { id: item.product_id } });
+      const { id: product_item_id, price } = item;
+      const { name, description } = product;
+      const { quantity } = cartItems.find((cartItem) => cartItem.product_item_id === item.id);
+      return { product_item_id, name, description, price, quantity };
+    }));
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+
 module.exports = {
   addToCart,
   modifyCart,
   emptyCart,
+  displayCart
 };

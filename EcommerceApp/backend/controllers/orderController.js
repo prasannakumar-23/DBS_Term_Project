@@ -1,10 +1,12 @@
 const {Order,OrderProduct,OrderWarehouse,OrderVerdictUnclear,OrderVerdictClear} = require('../models/order');
 const Cart= require('../models/cart')
-const {ProductItem} = require('../models/product');
+const {ProductItem,Product} = require('../models/product');
 const axios = require('axios');
 const User = require('../models/user');
 const Seller= require('../models/seller')
 const { Op } = require('sequelize');
+const sequelize = require('sequelize');
+const {Warehouse}=require('../models/warehouse')
 
 const transferAPI = 'http://localhost:5050/transfer';
 
@@ -247,17 +249,18 @@ exports.handleCancel = async (req, res) => {
 
 
 exports.handleDelivery = async (req, res) => {
-  const { op_id, otp } = req.body;
-
+  const { otp,op_id} = req.body;
+  console.log("Handling delivery ",otp,op_id)
+  console.log(typeof op_id)
   try {
     // Search for the order verdict with matching op_id and HOL status
     const orderVerdict = await OrderVerdictUnclear.findOne({
-      where: { op_id, status_id: 'HOL' }
+      where: { op_id: op_id, status_id: 'HOL' }
     });
-
+    console.log("ORDER VERDICT ",orderVerdict)
     if (!orderVerdict) {
       const orderVerdict = await OrderVerdictUnclear.findOne({
-          where: { op_id, status_id: 'RHOL' }
+          where: { op_id: op_id, status_id: 'RHOL' }
       });
       if(!orderVerdict){
         return res.status(404).json({ error: 'Order verdict not found' });
@@ -332,12 +335,16 @@ exports.handleReturn = async (req, res) => {
 
 
 //////ACCEPT/////
+
+
+
 exports.acceptReturn = async(req,res)=>{
   const { op_id,seller_email} = req.body;
   try{
     const orderVerdict = await OrderVerdictUnclear.findOne({
       where: { op_id, status_id: 'RRS' }
     });
+    const email = orderVerdict.user_email
      if (!orderVerdict) {
       return res.status(404).json({ error: 'Order verdict not found' });
     }
@@ -382,14 +389,45 @@ exports.acceptReturn = async(req,res)=>{
 
 
 //FOR ACCEPT INCREASE PRODUCT QUANTITY IF POSSIBLE
-
-
-
 //////REJECT/////
 
+exports.fetchReturnRequests = async (req, res) => {
+  const { seller_email } = req.body;
+  try {
+    const returnRequests = await OrderVerdictUnclear.findAll({
+      where: {
+        seller_email,
+        status_id: 'RRS'
+      }
+    });
+    const returns = await Promise.all(returnRequests.map(async (order) => {
+      console.log("Order",order)
+      const { op_id, status_id} = order;
+      
+      const orderProd=await OrderProduct.findOne({where: {op_id:op_id}})
+      console.log("Order Prod ",orderProd)
+      const prodItem= await ProductItem.findOne({where: { id: orderProd.product_item_id }});
+      const prod= await Product.findOne({where: { id: prodItem.product_id }});
+      const { name, description } = prod;
+      price=orderProd.price
+      return {
+        product_name: name,
+        description,
+        status_id ,
+        op_id,
+        price: price
+      };
+    }));
+    console.log("returns ",returns)
+    res.status(200).json(returns);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+}
 
 exports.rejectReturn = async(req,res)=>{
-  const { op_id,email} = req.body;
+  const { op_id,seller_email} = req.body;
   try{
     console.log('Hello ',op_id)
     const orderVerdict = await OrderVerdictUnclear.findOne({
@@ -411,7 +449,7 @@ exports.rejectReturn = async(req,res)=>{
     // await OrderVerdictUnclear.destroy({ where: { op_id } });
     // await OrderVerdictClear.create({ op_id, status_id: 'RET' });
 
-    const user = await Seller.findOne({ email: email });
+    const user = await Seller.findOne({ email: seller_email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -451,31 +489,62 @@ exports.rejectReturn = async(req,res)=>{
 
 
 
-
-
 exports.fetchOrder = async (req, res) => {
-  const userEmail = req.body.email;
+  const { user_email } = req.body;
 
-  // Find all orders associated with the user's email
-  const orders = await Order.findAll({
-    where: {
-      user_email: userEmail,
-    }
-  });
+  try {
+    const temp1 = await OrderVerdictUnclear.findAll({
+      where: { user_email }
+    });
+
+    console.log("TEMP1")
+    console.log(temp1)
 
 
-  // Extract the order ids from the orders array
-  const orderIds = orders.map((order) => order.order_id);
+    
 
-  // Find all the rows in OrderProduct table with the extracted order ids
-  const orderProducts = await OrderProduct.findAll({
-    where: {
-      order_id: orderIds,
-    },
-  });
-  console.log(orderProducts)
 
-  // Return the order products in a JSON format
-  res.json(orderProducts);
-};
+    
+
+    const temp2 = await ProductItem.findAll({
+      include: [{ model: Product }]
+    });
+
+
+    console.log("TEMP2")
+    console.log(temp2)
+
+    const orders = await Promise.all(temp1.map(async (order) => {
+      console.log("Order",order)
+      const { op_id, date, product_item_id, status_id, price, quantity } = order;
+      const orderWarehouse=await OrderWarehouse.findOne({where:{op_id:order.op_id}})
+      const warehouse_id = orderWarehouse.warehouse_id;
+      const warehouse = "Warehouse "+warehouse_id.toString()
+      console.log("OD",product_item_id)
+      const orderProd=await OrderProduct.findOne({where: {op_id:order.op_id}})
+      console.log("Order Prod ",orderProd)
+      const prodItem= await ProductItem.findOne({where: { id: orderProd.product_item_id }});
+      const prod= await Product.findOne({where: { id: prodItem.product_id }});
+      const { name, description } = prod;
+
+      return {
+        product_name: name,
+        description,
+        status_id ,
+        op_id,
+        date: date,
+        warehouse: warehouse,
+        price: orderProd.price
+      };
+    }));
+
+    console.log(orders)
+    
+    res.json(orders);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};;
 

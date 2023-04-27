@@ -78,10 +78,35 @@ exports.login = (req, res) => {
 
 
 
-
 exports.logout = (req, res) => {
   // Remove user id from local storage
   localStorage.removeItem('userId');
 
   res.status(200).json({ message: 'Logout successful' });
 };
+
+
+
+
+
+
+
+exports.fetchDetails=(req,res)=>{
+  const { email} = req.body;
+  User.findOne({ email: email })
+    .then(user => {
+      if (!user) {
+        console.log("In !user")
+        return res.status(400).json({ message: 'Invalid email ' });
+      }
+
+      // Compare password and pass both user and isMatch values
+      const response={
+        account_id:user.account_ids[user.default_id]
+      }
+      return res.status(200).json(response);
+    })
+    .catch(err => {
+      return res.status(500).json({ message: err });
+    });
+}

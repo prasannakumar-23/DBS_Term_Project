@@ -12,6 +12,7 @@ sequelize.authenticate()
   .then(() => console.log('MySQL connected'))
   .catch((err) => console.log(err));
 
+  
 const Cart = sequelize.define('Cart', {
   email: {
     type: Sequelize.STRING,

@@ -78,8 +78,75 @@ exports.postProduct = async(req,res)=>{
   res.send('Product added successfully');
 }
 
+exports.fetchProductCat= async (req,res)=>{
+  const category_name=req.query.category_name
+  console.log(req.query)
+   console.log('CAT_NAME ',category_name)
+   try {
+    const category = await ProductCategory.findOne({ where: { category_name: category_name } });
+    console.log("PRODCUT CATEGORY DONE")
+    console.log(category)
 
+    const products = await Product.findAll({ where: { category_id: category.id } });
+    console.log("PRODCUT DONE")
+    console.log(products)
+
+    const productItems = await ProductItem.findAll({ where: { product_id: products.map((product) => product.id) },include: [Product], });
+    console.log("PRODCUT ITEMS")
+    // console.log(productItems)
+    console.log(productItems[0].Product)
+    const productList = productItems.map((item) => (
+     
+      
+   {
+      product_name: item.Product.name,
+      description: item.Product.description,
+      price: item.price,
+      product_item_id: item.id,
+    }));
+
+    res.status(201).send(productList);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send([]);
+  }
+}
+
+exports.fetchProduct= async (req,res)=>{
+  const product_name=req.query.product_name
+  console.log(req.query)
+   console.log('PROD_NAME ',product_name)
+   try {
+    // const category = await ProductCategory.findOne({ where: { category_name: category_name } });
+    // console.log("PRODCUT CATEGORY DONE")
+    // console.log(category)
+
+    const products = await Product.findAll({ where: { name: product_name } });
+    console.log("PRODCUT DONE")
+    console.log(products)
+    console.log(products.id)
+    const productItems = await ProductItem.findAll({ where: { product_id: products[0].id },include: [Product], });
+    console.log("PRODCUT ITEMS")
+    // console.log(productItems)
+    console.log(productItems[0].Product)
+    const productList = productItems.map((item) => (
+     
+      
+   {
+      product_name: item.Product.name,
+      description: item.Product.description,
+      price: item.price,
+      product_item_id: item.id,
+    }));
+
+    res.status(201).send(productList);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send([]);
+  }
+}
 /*
 Modify the quantity of product item
 Delete a product item
 */
+
